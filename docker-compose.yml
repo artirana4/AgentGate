@@ -1,0 +1,38 @@
+version: '3.8'
+
+services:
+  gateway:
+    build: .
+    container_name: agentgate_gateway
+    ports:
+      - "8000:8000"
+    volumes:
+      - agentgate_data:/app
+    environment:
+      - AGENTGATE_HOST=0.0.0.0
+      - AGENTGATE_PORT=8000
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+    restart: unless-stopped
+
+  dashboard:
+    build: .
+    container_name: agentgate_dashboard
+    ports:
+      - "8501:8501"
+    volumes:
+      - agentgate_data:/app
+    environment:
+      - AGENTGATE_API_URL=http://gateway:8000
+    depends_on:
+      gateway:
+        condition: service_healthy
+    command: ["streamlit", "run", "dashboard/app.py", "--server.port", "8501", "--server.address", "0.0.0.0"]
+    restart: unless-stopped
+
+volumes:
+  agentgate_data:

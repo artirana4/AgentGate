@@ -1,0 +1,70 @@
+# AgentGate Default Security Policy Configuration
+version: "1.0"
+
+# Sequence risk scoring settings
+risk_scoring:
+  weights:
+    bulk_customer_read: 20
+    customer_data_export: 30
+    external_recipient_email: 40
+  thresholds:
+    pause_min: 40
+    block_min: 70
+
+# Provenance tracking configuration
+provenance:
+  enabled: true
+  similarity_cutoff: 0.85
+  enforce_untrusted_exfiltration_block: true
+
+# Allowed domain list for email sends
+allowed_domains:
+  - "example-corp.internal"
+  - "internal.local"
+  - "trusted-partner.internal"
+
+# Structured Policy Rules
+# Supported operators: gt, lt, eq, in, not_in, ends_with
+rules:
+  # Rule 1: High-value refund approval
+  - name: "require_approval_for_large_refund"
+    tool: "issue_refund"
+    conditions:
+      - field: "amount"
+        op: "gt"
+        value: 10000
+    action: "PAUSE"
+    message: "Refund amount exceeds ₹10,000 threshold and requires explicit human verification."
+
+  # Rule 2: Email recipient external domain restriction
+  - name: "block_unauthorized_email_domain"
+    tool: "send_email"
+    conditions:
+      - field: "to"
+        op: "not_in"
+        value:
+          - "@example-corp.internal"
+          - "@internal.local"
+          - "@trusted-partner.internal"
+    action: "BLOCK"
+    message: "Email recipient domain is not in the configured authorized internal domain list."
+
+  # Rule 3: Large CSV export approval
+  - name: "require_approval_for_bulk_export"
+    tool: "export_csv"
+    conditions:
+      - field: "row_count"
+        op: "gt"
+        value: 100
+    action: "PAUSE"
+    message: "CSV export exceeding 100 rows requires explicit human authorization."
+
+  # Rule 4: Bulk customer read limit approval
+  - name: "require_approval_for_bulk_customer_read"
+    tool: "read_customers"
+    conditions:
+      - field: "limit"
+        op: "gt"
+        value: 100
+    action: "PAUSE"
+    message: "Customer read query exceeding 100 records requires explicit supervisory sign-off."

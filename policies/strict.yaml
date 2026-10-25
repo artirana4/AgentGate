@@ -1,0 +1,61 @@
+# AgentGate Strict Security Policy Configuration
+version: "1.0-strict"
+
+risk_scoring:
+  weights:
+    bulk_customer_read: 25
+    customer_data_export: 35
+    external_recipient_email: 50
+  thresholds:
+    pause_min: 25
+    block_min: 50
+
+provenance:
+  enabled: true
+  similarity_cutoff: 0.85
+  enforce_untrusted_exfiltration_block: true
+
+allowed_domains:
+  - "example-corp.internal"
+
+rules:
+  # Stricter refund threshold: > 5,000 instead of 10,000
+  - name: "require_approval_for_medium_refund"
+    tool: "issue_refund"
+    conditions:
+      - field: "amount"
+        op: "gt"
+        value: 5000
+    action: "PAUSE"
+    message: "Refund amount exceeds strict threshold of ₹5,000 and requires human verification."
+
+  # Block any external email
+  - name: "block_all_external_emails"
+    tool: "send_email"
+    conditions:
+      - field: "to"
+        op: "not_in"
+        value:
+          - "@example-corp.internal"
+    action: "BLOCK"
+    message: "Strict policy: only @example-corp.internal recipients permitted."
+
+  # Stricter export limit: > 50 rows instead of 100
+  - name: "require_approval_for_small_export"
+    tool: "export_csv"
+    conditions:
+      - field: "row_count"
+        op: "gt"
+        value: 50
+    action: "PAUSE"
+    message: "CSV export exceeding 50 rows requires explicit human authorization under strict policy."
+
+  # Stricter read limit: > 50 records instead of 100
+  - name: "require_approval_for_customer_read_50"
+    tool: "read_customers"
+    conditions:
+      - field: "limit"
+        op: "gt"
+        value: 50
+    action: "PAUSE"
+    message: "Customer read query exceeding 50 records requires explicit supervisory sign-off under strict policy."
